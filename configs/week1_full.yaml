@@ -1,0 +1,95 @@
+output_dir: runs/week1-full
+device: auto
+
+data:
+  root: data
+  pretrain_examples_per_task: 500
+  fine_tune_examples: null
+  train_batch_size: 128
+  eval_batch_size: 1024
+  num_workers: 4
+
+model:
+  image_features: 784
+  task_features: 1
+  hidden_sizes: [512, 256]
+  output_classes: 10
+
+lora:
+  # All-layer rank 8 is the preregistered primary contrast. alpha/r = 1.
+  rank: 8
+  alpha: 8.0
+  dropout: 0.0
+  target_modules: [input_layer, hidden_layer, output_layer]
+
+pretraining:
+  # RL's Razor specifies the data and architecture but not a pretraining epoch
+  # count in Appendix B.3. Keep this explicit and report it with the replication.
+  epochs: 30
+  learning_rate: 0.001
+  weight_decay: 0.0
+  warmup_fraction: 0.1
+
+sweep:
+  methods:
+    - sft_1
+    - sft_2
+    - oracle_sft
+    - reinforce_10
+    - grpo
+    - grpo_kl
+  parameterizations:
+    - full
+    - lora
+  learning_rates:
+    # Tune each parameterization independently. The LoRA grid is shifted 10x
+    # because its zero-initialized factorization commonly needs a larger LR.
+    full:
+      - 3.0e-6
+      - 4.542834124e-6
+      - 6.879113960e-6
+      - 1.041689121e-5
+      - 1.577406962e-5
+      - 2.388632725e-5
+      - 3.617054085e-5
+      - 5.477225575e-5
+      - 8.294042416e-5
+      - 1.255948630e-4
+      - 1.901855432e-4
+      - 2.879937919e-4
+      - 4.361026751e-4
+      - 6.603807047e-4
+      - 1.0e-3
+    lora:
+      - 3.0e-5
+      - 4.542834124e-5
+      - 6.879113960e-5
+      - 1.041689121e-4
+      - 1.577406962e-4
+      - 2.388632725e-4
+      - 3.617054085e-4
+      - 5.477225575e-4
+      - 8.294042416e-4
+      - 1.255948630e-3
+      - 1.901855432e-3
+      - 2.879937919e-3
+      - 4.361026751e-3
+      - 6.603807047e-3
+      - 1.0e-2
+  schedulers:
+    - constant_with_warmup
+    - cosine_with_warmup
+  epochs: [1, 2]
+  # Confirmatory replication: three independent subset/model/training seeds.
+  seeds: [17, 29, 43]
+  warmup_fraction: 0.1
+  weight_decay: 0.0
+  max_grad_norm: 1.0
+  group_size: 16
+  grpo_kl_coefficient: 0.1
+  checkpoint_fractions: [0.25, 0.5, 0.75, 1.0]
+
+evaluation:
+  cka_max_examples: 1024
+  probe_max_train_examples: 500
+  probe_ridge: 0.01

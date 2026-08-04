@@ -1,0 +1,40 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "distance-not-damage"
+version = "0.1.0"
+description = "Reproduction harness for the ParityMNIST KL-forgetting law."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "numpy>=2.0,<3",
+  "PyYAML>=6.0,<7",
+  "torch>=2.5,<3",
+  "torchvision>=0.20,<1",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0,<9",
+  "ruff>=0.12,<1",
+]
+
+[project.scripts]
+dnd-train = "distance_not_damage.cli:train_main"
+dnd-sweep = "distance_not_damage.cli:sweep_main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/distance_not_damage"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]

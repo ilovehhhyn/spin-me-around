@@ -1,0 +1,13 @@
+# Copy to terraform.tfvars. The copy is ignored by Git.
+# Do not commit real identifiers, credentials, or key material.
+subscription_id = "00000000-0000-0000-0000-000000000000"
+tenant_id       = "00000000-0000-0000-0000-000000000000"
+
+resource_group_name = "august-2026-1"
+region              = "westus2"
+vm_size             = "Standard_NC40ads_H100_v5"
+vm_name             = "dnd-week1-gpu"
+admin_username       = "azureuser"
+
+ssh_public_key_path = "~/.ssh/id_ed25519_spark.pub"
+ssh_source_cidr     = "203.0.113.10/32"

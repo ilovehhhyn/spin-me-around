@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.venv/
+dist/
+build/
+*.egg-info/
+
+# Experiment artifacts
+data/
+runs/
+checkpoints/
+*.pt
+*.pth
+
+# Terraform and local infrastructure values
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfplan
+crash.log
+crash.*.log
+
+# Local work files
+work/
+.DS_Store

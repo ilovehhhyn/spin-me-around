@@ -1,0 +1,50 @@
+output_dir: runs/week1-rank-pilot
+device: auto
+
+data:
+  root: data
+  pretrain_examples_per_task: 500
+  fine_tune_examples: 10000
+  train_batch_size: 128
+  eval_batch_size: 1024
+  num_workers: 0
+
+model:
+  image_features: 784
+  task_features: 1
+  hidden_sizes: [512, 256]
+  output_classes: 10
+
+lora:
+  rank: 8
+  alpha: 8.0
+  dropout: 0.0
+  target_modules: [input_layer, hidden_layer, output_layer]
+
+pretraining:
+  epochs: 30
+  learning_rate: 0.001
+  weight_decay: 0.0
+  warmup_fraction: 0.1
+
+sweep:
+  # The four-cell Week-1 core: objective/data path x update parameterization.
+  methods: [sft_1, reinforce_10]
+  parameterizations: [full, lora]
+  learning_rates:
+    full: [1.0e-5, 3.0e-5, 1.0e-4, 3.0e-4, 1.0e-3]
+    lora: [1.0e-4, 3.0e-4, 1.0e-3, 3.0e-3, 1.0e-2]
+  schedulers: [constant_with_warmup]
+  epochs: [1]
+  seeds: [17]
+  warmup_fraction: 0.1
+  weight_decay: 0.0
+  max_grad_norm: 1.0
+  group_size: 16
+  grpo_kl_coefficient: 0.1
+  checkpoint_fractions: [0.25, 0.5, 1.0]
+
+evaluation:
+  cka_max_examples: 1024
+  probe_max_train_examples: 500
+  probe_ridge: 0.01
