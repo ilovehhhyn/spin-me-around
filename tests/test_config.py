@@ -21,4 +21,5 @@ def test_smoke_config_loads() -> None:
     )
     assert config.sweep.learning_rates_for(FineTuneParameterization.FULL) == (1e-4,)
     assert config.sweep.learning_rates_for(FineTuneParameterization.LORA) == (1e-3,)
+    assert config.sweep.early_checkpoint_steps == (1, 2, 4, 8)
     assert config.lora.rank == 8

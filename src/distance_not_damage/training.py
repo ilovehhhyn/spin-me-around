@@ -84,11 +84,10 @@ def fine_tune_model(
         total_steps=total_steps,
         warmup_fraction=sweep_config.warmup_fraction,
     )
-    checkpoint_steps = {
-        max(1, math.ceil(fraction * total_steps))
-        for fraction in sweep_config.checkpoint_fractions
-    }
-    checkpoint_steps.add(total_steps)
+    checkpoint_steps = build_checkpoint_steps(
+        total_steps=total_steps,
+        sweep_config=sweep_config,
+    )
 
     step = 0
     diagnostics_accumulator: dict[str, float] = {}
@@ -138,6 +137,22 @@ def fine_tune_model(
                 diagnostics_accumulator.clear()
                 diagnostics_count = 0
                 model.train()
+
+
+def build_checkpoint_steps(*, total_steps: int, sweep_config: SweepConfig) -> set[int]:
+    """Combine dense logarithmic early steps with run-relative checkpoints."""
+
+    if total_steps <= 0:
+        raise ValueError("total_steps must be positive")
+    checkpoint_steps = {
+        max(1, math.ceil(fraction * total_steps))
+        for fraction in sweep_config.checkpoint_fractions
+    }
+    checkpoint_steps.update(
+        step for step in sweep_config.early_checkpoint_steps if step <= total_steps
+    )
+    checkpoint_steps.add(total_steps)
+    return checkpoint_steps
 
 
 def build_scheduler(

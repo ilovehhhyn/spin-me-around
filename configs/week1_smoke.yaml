@@ -41,6 +41,7 @@ sweep:
   max_grad_norm: 1.0
   group_size: 16
   grpo_kl_coefficient: 0.1
+  early_checkpoint_steps: [1, 2, 4, 8]
   checkpoint_fractions: [0.5, 1.0]
 
 evaluation:

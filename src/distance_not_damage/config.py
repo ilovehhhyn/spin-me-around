@@ -116,6 +116,7 @@ class SweepConfig:
     max_grad_norm: float = 1.0
     group_size: int = 16
     grpo_kl_coefficient: float = 0.1
+    early_checkpoint_steps: tuple[int, ...] = (1, 2, 4, 8, 16, 32, 64)
     checkpoint_fractions: tuple[float, ...] = (0.25, 0.5, 1.0)
 
     def __post_init__(self) -> None:
@@ -141,6 +142,10 @@ class SweepConfig:
             raise ValueError("group_size must be at least two")
         if self.grpo_kl_coefficient < 0.0:
             raise ValueError("grpo_kl_coefficient cannot be negative")
+        if any(value <= 0 for value in self.early_checkpoint_steps):
+            raise ValueError("early checkpoint steps must be positive")
+        if tuple(sorted(set(self.early_checkpoint_steps))) != self.early_checkpoint_steps:
+            raise ValueError("early checkpoint steps must be sorted and unique")
         if any(not 0.0 < value <= 1.0 for value in self.checkpoint_fractions):
             raise ValueError("checkpoint fractions must be in (0, 1]")
 
@@ -261,6 +266,12 @@ class ExperimentConfig:
                 max_grad_norm=float(sweep_raw.get("max_grad_norm", 1.0)),
                 group_size=int(sweep_raw.get("group_size", 16)),
                 grpo_kl_coefficient=float(sweep_raw.get("grpo_kl_coefficient", 0.1)),
+                early_checkpoint_steps=tuple(
+                    int(value)
+                    for value in sweep_raw.get(
+                        "early_checkpoint_steps", [1, 2, 4, 8, 16, 32, 64]
+                    )
+                ),
                 checkpoint_fractions=tuple(
                     float(value)
                     for value in sweep_raw.get("checkpoint_fractions", [0.25, 0.5, 1.0])
