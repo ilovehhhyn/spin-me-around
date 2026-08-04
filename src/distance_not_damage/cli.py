@@ -42,11 +42,7 @@ def train_main() -> None:
         scheduler=arguments.scheduler or config.sweep.schedulers[0],
         epochs=arguments.epochs or config.sweep.epochs[0],
         seed=arguments.seed if arguments.seed is not None else config.sweep.seeds[0],
-        lora_rank=(
-            config.lora.rank
-            if parameterization == FineTuneParameterization.LORA
-            else None
-        ),
+        lora_rank=(config.lora.rank if parameterization == FineTuneParameterization.LORA else None),
     )
     summary = ExperimentRunner(config).run(spec)
     print(json.dumps(summary, indent=2, sort_keys=True))

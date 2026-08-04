@@ -145,8 +145,7 @@ def build_checkpoint_steps(*, total_steps: int, sweep_config: SweepConfig) -> se
     if total_steps <= 0:
         raise ValueError("total_steps must be positive")
     checkpoint_steps = {
-        max(1, math.ceil(fraction * total_steps))
-        for fraction in sweep_config.checkpoint_fractions
+        max(1, math.ceil(fraction * total_steps)) for fraction in sweep_config.checkpoint_fractions
     }
     checkpoint_steps.update(
         step for step in sweep_config.early_checkpoint_steps if step <= total_steps

@@ -77,9 +77,9 @@ def policy_shift_metrics(
         current_log_probabilities = current_logits.log_softmax(dim=-1)
         base_probabilities = base_log_probabilities.exp()
         current_probabilities = current_log_probabilities.exp()
-        forward = (
-            base_probabilities * (base_log_probabilities - current_log_probabilities)
-        ).sum(dim=-1)
+        forward = (base_probabilities * (base_log_probabilities - current_log_probabilities)).sum(
+            dim=-1
+        )
         reverse = (
             current_probabilities * (current_log_probabilities - base_log_probabilities)
         ).sum(dim=-1)

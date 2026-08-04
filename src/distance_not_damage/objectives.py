@@ -35,8 +35,10 @@ def forward_policy_kl(base_logits: Tensor, current_logits: Tensor) -> Tensor:
     current_log_probabilities = current_logits.log_softmax(dim=-1)
     base_probabilities = base_log_probabilities.exp()
     return (
-        base_probabilities * (base_log_probabilities - current_log_probabilities)
-    ).sum(dim=-1).mean()
+        (base_probabilities * (base_log_probabilities - current_log_probabilities))
+        .sum(dim=-1)
+        .mean()
+    )
 
 
 def reverse_policy_kl(base_logits: Tensor, current_logits: Tensor) -> Tensor:
@@ -46,8 +48,10 @@ def reverse_policy_kl(base_logits: Tensor, current_logits: Tensor) -> Tensor:
     current_log_probabilities = current_logits.log_softmax(dim=-1)
     current_probabilities = current_log_probabilities.exp()
     return (
-        current_probabilities * (current_log_probabilities - base_log_probabilities)
-    ).sum(dim=-1).mean()
+        (current_probabilities * (current_log_probabilities - base_log_probabilities))
+        .sum(dim=-1)
+        .mean()
+    )
 
 
 def fine_tuning_loss(
@@ -105,9 +109,7 @@ def _on_policy_loss(
     probabilities = log_probabilities.exp()
     sampled_labels = torch.multinomial(probabilities, group_size, replacement=True)
     sampled_log_probabilities = log_probabilities.gather(dim=1, index=sampled_labels)
-    rewards = (sampled_labels.remainder(2) == digits.unsqueeze(1).remainder(2)).to(
-        logits.dtype
-    )
+    rewards = (sampled_labels.remainder(2) == digits.unsqueeze(1).remainder(2)).to(logits.dtype)
 
     if method == FineTuneMethod.REINFORCE_10:
         weights = rewards

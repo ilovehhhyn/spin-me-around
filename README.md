@@ -5,10 +5,11 @@ Week-1 research harness for reproducing the ParityMNIST/FashionMNIST result from
 parameterization: full fine-tuning versus all-linear-layer LoRA rank 8.
 
 The revised proposal is in
-[`outputs/distance-is-not-damage-proposal.md`](outputs/distance-is-not-damage-proposal.md).
+[`docs/research/proposal.md`](docs/research/proposal.md).
 The corresponding methodological critique is in
-[`outputs/design-review.md`](outputs/design-review.md), and implementation/Azure verification status
-is recorded in [`outputs/week1-implementation-handoff.md`](outputs/week1-implementation-handoff.md).
+[`docs/research/design-review.md`](docs/research/design-review.md), and implementation/Azure
+verification status is recorded in
+[`docs/runbooks/week1-implementation.md`](docs/runbooks/week1-implementation.md).
 
 ## What the harness implements
 
@@ -20,6 +21,7 @@ is recorded in [`outputs/week1-implementation-handoff.md`](outputs/week1-impleme
 - Forward and reverse KL, task accuracy/forgetting, effective update norms, linear CKA, old-task
   label code length in bits, and fixed/fresh linear probes.
 - Deterministic JSONL checkpoint records and a sequential sweep runner.
+- Resolved configuration and Git/runtime provenance recorded with every run.
 - Float32 training throughout; no mixed-precision path is present in Week 1.
 
 ## Local setup
@@ -28,8 +30,12 @@ is recorded in [`outputs/week1-implementation-handoff.md`](outputs/week1-impleme
 python -m venv .venv
 source .venv/bin/activate
 pip install -e '.[dev]'
-pytest
+make check
 ```
+
+Install the pre-commit hooks once with `pre-commit install`. The same lint, formatting, tests, and
+package-build checks run in GitHub Actions on Python 3.11 and 3.12. See
+[`CONTRIBUTING.md`](CONTRIBUTING.md) for change requirements.
 
 Run the first configured smoke experiment, or select a cell explicitly:
 
@@ -47,6 +53,17 @@ dnd-sweep --config configs/week1_smoke.yaml
 
 The first run downloads MNIST and FashionMNIST into the ignored `data/` directory. Results and
 checkpoints are written beneath the configured ignored `runs/` directory.
+
+## Repository guide
+
+- [`docs/architecture.md`](docs/architecture.md) explains module boundaries and the run-artifact
+  contract.
+- [`docs/reproducibility.md`](docs/reproducibility.md) gives the staged smoke, pilot, and
+  confirmatory workflow.
+- [`configs/`](configs) contains version-controlled experiment definitions.
+- [`src/distance_not_damage/`](src/distance_not_damage) is the installable research package;
+  [`tests/`](tests) contains its fast contract tests.
+- [`infra/azure/`](infra/azure) contains the isolated, plan-first GPU VM infrastructure.
 
 ## Week-1 rank pilot and full sweep
 
