@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from enum import StrEnum
 from pathlib import Path
 from typing import Any
@@ -103,9 +103,7 @@ class PretrainingConfig:
 @dataclass(frozen=True)
 class SweepConfig:
     methods: tuple[FineTuneMethod, ...] = (FineTuneMethod.SFT_1,)
-    parameterizations: tuple[FineTuneParameterization, ...] = (
-        FineTuneParameterization.FULL,
-    )
+    parameterizations: tuple[FineTuneParameterization, ...] = (FineTuneParameterization.FULL,)
     full_learning_rates: tuple[float, ...] = (1e-4,)
     lora_learning_rates: tuple[float, ...] = (1e-3,)
     schedulers: tuple[SchedulerName, ...] = (SchedulerName.CONSTANT_WITH_WARMUP,)
@@ -127,9 +125,7 @@ class SweepConfig:
         for parameterization in self.parameterizations:
             learning_rates = self.learning_rates_for(parameterization)
             if not learning_rates:
-                raise ValueError(
-                    f"learning rates for {parameterization.value} cannot be empty"
-                )
+                raise ValueError(f"learning rates for {parameterization.value} cannot be empty")
             if any(value <= 0 for value in learning_rates):
                 raise ValueError("all learning rates must be positive")
         if any(value <= 0 for value in self.epochs):
@@ -149,9 +145,7 @@ class SweepConfig:
         if any(not 0.0 < value <= 1.0 for value in self.checkpoint_fractions):
             raise ValueError("checkpoint fractions must be in (0, 1]")
 
-    def learning_rates_for(
-        self, parameterization: FineTuneParameterization
-    ) -> tuple[float, ...]:
+    def learning_rates_for(self, parameterization: FineTuneParameterization) -> tuple[float, ...]:
         if parameterization == FineTuneParameterization.FULL:
             return self.full_learning_rates
         if parameterization == FineTuneParameterization.LORA:
@@ -185,6 +179,10 @@ class ExperimentConfig:
     sweep: SweepConfig = field(default_factory=SweepConfig)
     evaluation: EvaluationConfig = field(default_factory=EvaluationConfig)
 
+    def as_dict(self) -> dict[str, Any]:
+        """Return the fully resolved configuration in a JSON-safe form."""
+        return _json_safe(asdict(self))
+
     @classmethod
     def from_yaml(cls, path: Path) -> ExperimentConfig:
         raw = yaml.safe_load(path.read_text(encoding="utf-8"))
@@ -203,9 +201,7 @@ class ExperimentConfig:
             device=str(raw.get("device", "auto")),
             data=DataConfig(
                 root=Path(data_raw.get("root", "data")),
-                pretrain_examples_per_task=int(
-                    data_raw.get("pretrain_examples_per_task", 500)
-                ),
+                pretrain_examples_per_task=int(data_raw.get("pretrain_examples_per_task", 500)),
                 fine_tune_examples=(
                     int(data_raw["fine_tune_examples"])
                     if data_raw.get("fine_tune_examples") is not None
@@ -268,9 +264,7 @@ class ExperimentConfig:
                 grpo_kl_coefficient=float(sweep_raw.get("grpo_kl_coefficient", 0.1)),
                 early_checkpoint_steps=tuple(
                     int(value)
-                    for value in sweep_raw.get(
-                        "early_checkpoint_steps", [1, 2, 4, 8, 16, 32, 64]
-                    )
+                    for value in sweep_raw.get("early_checkpoint_steps", [1, 2, 4, 8, 16, 32, 64])
                 ),
                 checkpoint_fractions=tuple(
                     float(value)
@@ -279,9 +273,7 @@ class ExperimentConfig:
             ),
             evaluation=EvaluationConfig(
                 cka_max_examples=int(evaluation_raw.get("cka_max_examples", 1_024)),
-                probe_max_train_examples=int(
-                    evaluation_raw.get("probe_max_train_examples", 500)
-                ),
+                probe_max_train_examples=int(evaluation_raw.get("probe_max_train_examples", 500)),
                 probe_ridge=float(evaluation_raw.get("probe_ridge", 1e-2)),
             ),
         )
@@ -337,3 +329,16 @@ def _validate_optimization_values(
         raise ValueError("learning_rate must be positive")
     if not 0.0 <= warmup_fraction < 1.0:
         raise ValueError("warmup_fraction must be in [0, 1)")
+
+
+def _json_safe(value: Any) -> Any:
+    """Recursively convert configuration values into stable JSON primitives."""
+    if isinstance(value, StrEnum):
+        return value.value
+    if isinstance(value, Path):
+        return str(value)
+    if isinstance(value, dict):
+        return {str(key): _json_safe(item) for key, item in value.items()}
+    if isinstance(value, list | tuple):
+        return [_json_safe(item) for item in value]
+    return value

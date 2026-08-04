@@ -32,6 +32,7 @@ from distance_not_damage.model import (
     configure_for_fine_tuning,
     parameter_counts,
 )
+from distance_not_damage.provenance import capture_run_provenance
 from distance_not_damage.training import fine_tune_model, pretrain_model
 
 
@@ -51,9 +52,7 @@ class ExperimentRunner:
             spec.parameterization == FineTuneParameterization.LORA
             and spec.lora_rank != self.config.lora.rank
         ):
-            raise ValueError(
-                "RunSpec lora_rank must match the experiment LoRA configuration"
-            )
+            raise ValueError("RunSpec lora_rank must match the experiment LoRA configuration")
         run_directory = self.config.output_dir / spec.identifier
         completion_path = run_directory / "summary.json"
         if completion_path.exists():
@@ -64,6 +63,9 @@ class ExperimentRunner:
                 "Inspect it and move it aside before retrying."
             )
         run_directory.mkdir(parents=True)
+        provenance = capture_run_provenance(Path.cwd())
+        _atomic_write_json(self.config.as_dict(), run_directory / "resolved_config.json")
+        _atomic_write_json(provenance.as_dict(), run_directory / "provenance.json")
 
         seed_everything(spec.seed)
         data = self._data(spec.seed)
@@ -132,8 +134,10 @@ class ExperimentRunner:
             run_directory / "metrics.jsonl",
         )
         summary: dict[str, Any] = {
+            "schema_version": provenance.schema_version,
             "run": spec.as_dict(),
             "device": str(self.device),
+            "provenance": provenance.as_dict(),
             "base_metrics": base_metrics,
             "lora": asdict(self.config.lora),
             "initial_function_max_abs_error": initial_function_error,
@@ -147,12 +151,12 @@ class ExperimentRunner:
     def sweep_specs(self) -> list[RunSpec]:
         sweep = self.config.sweep
         run_settings = product(
-                sweep.methods,
-                sweep.parameterizations,
-                sweep.schedulers,
-                sweep.epochs,
-                sweep.seeds,
-            )
+            sweep.methods,
+            sweep.parameterizations,
+            sweep.schedulers,
+            sweep.epochs,
+            sweep.seeds,
+        )
         specs: list[RunSpec] = []
         for method, parameterization, scheduler, epochs, seed in run_settings:
             for learning_rate in sweep.learning_rates_for(parameterization):
@@ -228,9 +232,7 @@ class ExperimentRunner:
             )
         return self._fixed_probe_by_seed[seed]
 
-    def _base_evaluation(
-        self, model: TaskConditionedMLP, data: DataBundle
-    ) -> dict[str, float]:
+    def _base_evaluation(self, model: TaskConditionedMLP, data: DataBundle) -> dict[str, float]:
         parity = classification_metrics(
             model, data.parity_eval_loader, device=self.device, parity_task=True
         )
@@ -242,12 +244,8 @@ class ExperimentRunner:
             "fashion_accuracy": fashion["accuracy"],
             "parity_cross_entropy": parity["cross_entropy"],
             "fashion_cross_entropy": fashion["cross_entropy"],
-            "parity_code_length_bits_per_example": parity[
-                "code_length_bits_per_example"
-            ],
-            "fashion_code_length_bits_per_example": fashion[
-                "code_length_bits_per_example"
-            ],
+            "parity_code_length_bits_per_example": parity["code_length_bits_per_example"],
+            "fashion_code_length_bits_per_example": fashion["code_length_bits_per_example"],
         }
 
     def _evaluate(
@@ -332,9 +330,7 @@ class ExperimentRunner:
             "representation_cka": cka,
             "fashion_fixed_probe_accuracy": fixed_probe_accuracy,
             "fashion_fresh_probe_accuracy": fresh_probe_accuracy,
-            "fashion_probe_reorientation_gap": (
-                fresh_probe_accuracy - fixed_probe_accuracy
-            ),
+            "fashion_probe_reorientation_gap": (fresh_probe_accuracy - fixed_probe_accuracy),
             **parameter_count_metrics,
             **shift,
             **distances,
