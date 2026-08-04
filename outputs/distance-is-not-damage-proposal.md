@@ -164,6 +164,8 @@ Does externally supplied information load alter recovery at matched KL and immed
 
 **H3.** The effect of information load is conditional on capacity pressure. Novel associations should make recovery harder primarily as the new dataset approaches the measured writable capacity of the trainable parameterization. A main effect of random targets without an information-load × capacity-pressure interaction is insufficient evidence for capacity displacement.
 
+The design separately identifies **novelty** from **conflict**. Permuting an association attached to a familiar key can both introduce information and override probability mass that $	heta_0$ assigns to the original association. A fresh-key cell, verified to have no systematic base preference over candidate values, supplies novel associations without that contradiction.
+
 ### RQ4 — Rank and update geometry
 
 Does rank-8 LoRA change recovery relative to full fine-tuning after matching task-B performance, new-task KL, and immediate task-A forgetting?
@@ -171,6 +173,8 @@ Does rank-8 LoRA change recovery relative to full fine-tuning after matching tas
 **H4a.** At matched task-B performance, rank-8 LoRA will usually show less immediate task-A forgetting than full fine-tuning. This tests whether a published learning–forgetting pattern transfers to the present setting and is not yet the recovery contribution.
 
 **H4b.** After additionally matching KL and immediate forgetting, update parameterization will retain incremental predictive value for the recovery curve if endpoint behavioral distance is not sufficient. The directional mechanism is deliberately tested rather than assumed: an access/reorientation result would combine a larger fixed-versus-fresh probe gap with preserved old-task code length and positive recovery advantage; a rewrite result would combine fresh-probe loss, old-task code-length loss, and recovery approaching the never-knew baseline.
+
+**H4c — angle-conditioned rank invariance.** Steele's recent preprint predicts that LoRA rank has little effect on immediate forgetting when the principal angle between task-gradient subspaces is high, with stronger rank effects when task subspaces are similar. The direct extension tested here is: **does rank stop mattering for what comes back, too, when task-subspace angles are high?** Convergence of rank-conditioned recovery curves in the high-angle regime would extend the proposed law from forgetting to recoverability; divergence would establish its boundary.
 
 ### RQ5 — Competing signatures
 
@@ -233,7 +237,14 @@ Build a base-derived set of prompts and target strings. Randomly permute a prere
 - model architecture, optimizer, and loss;
 - dataset size and number of exposures.
 
-It changes only how much prompt–target association the base cannot know. Fully random token strings remain a calibration condition, not the sole treatment, because natural versus random strings would otherwise confound information load with surface form and initial likelihood.
+This manipulation does **not** change only novelty. When a prompt already elicits probability mass on its original value, permutation also creates conflict with a base prior: the model must suppress an existing association while learning the reassigned one. Initial loss and base target probabilities measure this conflict but do not remove it.
+
+Add a paired **fresh-key cell** to isolate novel information without override. Generate synthetic keys outside the task-A and base-derived key templates, pair them with the same target-string multiset, and filter or stratify them so $	heta_0$ has no systematic preference among candidate target assignments. Match target lengths, token marginals, dataset size, exposures, and optimization exactly to the permuted-key cell. The contrast is then:
+
+- fresh key + novel value: novelty with minimal measured conflict;
+- familiar key + permuted value: novelty plus override pressure.
+
+Fully random token strings remain a capacity-calibration condition, not the sole novelty treatment, because natural versus random strings would otherwise confound information load with surface form and initial likelihood.
 
 Add a deterministic formatting cell as a low-information positive-learning control. Measure initial loss and gradient statistics in every cell rather than assuming the construction matches difficulty perfectly.
 
@@ -249,7 +260,7 @@ Run at several $\rho$ bands below and around one. Capacity claims require this a
 
 #### Creating overlap
 
-Sweep learning rate and training steps independently within every $(\lambda,\rho,\text{parameterization})$ cell. Retain a common-support region in which cells overlap on:
+Sweep learning rate and training steps independently within every $(\lambda,\rho,\text{parameterization},\text{conflict condition})$ cell. Retain a common-support region in which cells overlap on:
 
 - new-task performance;
 - new-task forward KL;
@@ -272,6 +283,7 @@ Measure before any recovery intervention:
 | New-task distribution shift | $D_{\mathrm{KL}}(\pi_0\|\pi_B)$ on fixed task-B prompts | Match Shenfeld et al.; also report reverse KL. |
 | Immediate forgetting | Task-A performance drop from $\theta_0$ to $\theta_B$ | Condition on this when asking about recovery. |
 | New information acquired | $B_{\text{new}}$: training-specific compression advantage on B | Ground-truth interpretation is strongest for permuted/random associations. |
+| Base-association conflict | Initial target loss and base probability margin between assigned and original values | Separates fresh-key novelty from familiar-key override pressure; it is a measured covariate, not a substitute for the randomized fresh-key cell. |
 | Old behavioral information lost | $L_{\text{old}}$: code-length increase on canonical and paraphrased A targets | Report canonical, max-over-paraphrases, and content-token-only variants. |
 | Old information decodability | Fixed and fresh linear probes on frozen A representations | The fixed $\theta_0$ probe tests coordinate/readout stability; a fresh checkpoint-specific probe tests linear decodability. Both require A labels and are scientific diagnostics, not deployable no-A signals. |
 | Representation change | Layerwise CKA/CKNNA on A, B, and neutral prompts | Geometry is a candidate predictor, not proof of content. |
@@ -291,14 +303,25 @@ Each terminal checkpoint receives three recovery arms:
 
 All recovery arms preserve the task-B update and report both A recovery and B retention. For LoRA checkpoints, “disable the B adapter” is logged only as a sanity bound and is excluded from recovery outcomes because it restores A by discarding B.
 
+Recovery is counted only while task B remains within a preregistered tolerance of its post-fine-tuning score. For recovery checkpoint $\theta_{A\leftarrow B}(b)$ at budget $b$, admissibility requires
+
+$$
+S_B\!\left(\theta_{A\leftarrow B}(b)\right)
+\geq
+S_B(\theta_B)-\epsilon_B,
+$$
+
+where $\epsilon_B$ is set from task-B evaluation noise before recovery and accompanied by a sensitivity analysis. Every recovery metric is computed on this admissible portion of the curve; if the threshold is never reached without violating the B floor, the recovery budget is censored. The full joint $(S_A,S_B)$ Pareto frontier is reported so that “recovering A by forgetting B back” cannot count as successful recovery.
+
 For each arm, evaluate a budget ladder in examples, tokens, and optimizer steps. Use the best result from a small preregistered recovery-learning-rate grid so that a checkpoint is not labeled resistant merely because one learning rate was unsuitable.
 
 Primary recovery outcomes are:
 
-- **Recovery AULC:** area under the task-A recovery curve on a log-budget axis;
-- **Recovery advantage:** AULC from $\theta_B$ minus AULC from the matched never-knew-A control;
-- **Recovery ceiling:** best task-A score within the maximum budget;
-- **$C_{90}$:** minimum budget restoring 90% of the lost score, reported as a secondary, censored outcome with 80% and 95% sensitivity analyses.
+- **B-constrained recovery AULC:** area under the admissible task-A recovery curve on a log-budget axis;
+- **B-constrained recovery advantage:** admissible AULC from $\theta_B$ minus admissible AULC from the matched never-knew-A control;
+- **Joint recovery frontier:** the Pareto frontier of task-A restoration and task-B retention over budgets and recovery learning rates;
+- **Recovery ceiling:** best admissible task-A score within the maximum budget;
+- **$C_{90}$:** minimum admissible budget restoring 90% of the lost score, reported as a secondary, censored outcome with 80% and 95% sensitivity analyses.
 
 Recovery advantage, not raw recovery speed, is the closest operational measure of retained task-A information.
 
@@ -313,10 +336,13 @@ The main full-versus-rank-8 comparison changes both the dimension and the factor
 | Placement | All linear layers vs MLP-only vs attention-only | Is writable capacity/forgetting driven by where updates are allowed? Transformer phase only. |
 | Parameter budget | LoRA vs a matched-dimensional random update subspace | Is the effect specific to factorized low rank or mostly trainable dimension? |
 | Learning control | Independently tuned learning-rate/step grids; matched task-B performance | Does “LoRA forgets less” survive equal learning rather than reflect underfitting? |
-| Geometry | High- vs low-A/B gradient-subspace-angle task pairs | Does rank matter only when task update subspaces overlap? |
+| Geometry | High- vs low-A/B gradient-subspace-angle task pairs | Does rank stop mattering for forgetting—and for what comes back—when task angles are high? |
+| Temporal dissociation | Dense early task-B checkpoints | Does task-A damage appear before old-task code-length loss, as an access-loss account predicts? |
 | Bias/scaling | Frozen vs trainable bias; fixed $\alpha/r$ | Are implementation details masquerading as rank effects? |
 
 These ablations are ordered to control scope. Week 1 runs only the primary full-versus-$r=8$ comparison, with all linear layers targeted and separate learning-rate sweeps. Phase 1 adds $r\in\{2,8,32\}$ if the primary contrast has common support and a detectable effect. Placement and matched-dimensional random-subspace controls are LLM-stage mechanism checks.
+
+The **temporal dissociation** is a secondary, step-resolved analysis that can be completed before the recovery arms. Log task-A performance, old-task code length, fixed/fresh probes, and new-task KL at logarithmically spaced early B-training steps in addition to the existing fractional checkpoints. Spurious-forgetting theory predicts a sharp early task-A drop while old-task code-length loss remains small; a rewrite account predicts behavioral damage and code-length loss moving together. A clean lag is strong evidence for early access disruption, although later content loss may still accumulate. This analysis requires extra checkpoint evaluation but no recovery training.
 
 ### 5.7 Analysis plan
 
@@ -337,11 +363,12 @@ Compare grouped out-of-sample $R^2$, rank correlation, and calibration. Hold out
 
 #### Causal analysis
 
-Estimate the randomized effects of $\lambda$, $\rho$, parameterization, and their preregistered interactions within the common-support region, controlling for task performance, KL, and immediate forgetting. The information-load × capacity-pressure interaction is the confirmatory capacity test. The rank-8/full coefficient and parameterization × task-subspace-angle interaction test whether update geometry adds information beyond the behavioral endpoint. Mediation through measured $B_{\text{new}}$, $L_{\text{old}}$, or probes is exploratory because those quantities are post-treatment variables.
+Estimate the randomized effects of $\lambda$, $\rho$, conflict condition, parameterization, and their preregistered interactions within the common-support region, controlling for task performance, KL, and immediate forgetting. The fresh-key versus familiar-permuted contrast identifies override pressure beyond novelty. The information-load × capacity-pressure interaction is the confirmatory capacity test. The rank-8/full coefficient and parameterization × task-subspace-angle interaction test whether update geometry adds information beyond the behavioral endpoint. A preregistered high-angle equivalence test asks whether recovery differences across LoRA ranks fall inside a practical-equivalence band. Mediation through measured $B_{\text{new}}$, $L_{\text{old}}$, or probes is exploratory because those quantities are post-treatment variables.
 
 #### Falsification checks
 
 - Held-out random associations must have near-zero training-specific compression advantage.
+- Fresh keys must show no systematic base preference among candidate values; otherwise the zero-conflict interpretation fails and conflict remains a measured covariate only.
 - Surface-form variants must agree in sign; otherwise the code-length instrument is format-dominated.
 - Predictors must transfer to held-out mappings/tasks; checkpoint interpolation alone is insufficient.
 - Results must survive per-run aggregation so dense checkpoint logging does not inflate the effective sample size.
@@ -452,7 +479,7 @@ If completed, the project contributes:
 
 | Time | Work | Decision gate |
 |---|---|---|
-| Week 1 | Run the four-cell objective × parameterization pilot: SFT-1 and 1–0 REINFORCE, each with full fine-tuning and all-layer LoRA $r=8$; verify exact zero-step equivalence, trainable-parameter accounting, effective-weight metrics, bits, CKA, and fixed/fresh probes. | P0 harness and LoRA correctness |
+| Week 1 | Run the four-cell objective × parameterization pilot: SFT-1 and 1–0 REINFORCE, each with full fine-tuning and all-layer LoRA $r=8$; verify exact zero-step equivalence, trainable-parameter accounting, effective-weight metrics, bits, CKA, fixed/fresh probes, and logarithmic early-step logging. | P0 harness and LoRA correctness |
 | Weeks 2–3 | Full Phase-0 sweep with independently tuned full/LoRA grids and at least three seeds; estimate common support and preregister the recovery protocol. | K1, K6 |
 | Weeks 4–5 | Build paired A/B synthetic task, never-knew control, and random-association calibration. | K5 |
 | Weeks 6–7 | Information-load × capacity-pressure sweep and recovery arms. | K2–K4 |
