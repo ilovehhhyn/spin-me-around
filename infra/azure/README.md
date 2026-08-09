@@ -16,6 +16,11 @@ schemas for `azurerm_linux_virtual_machine`, networking, and the existing resour
 source. The VM image is `microsoft-dsvm:ubuntu-hpc:2204:latest`; the OS disk is 512 GB
 `Premium_LRS`.
 
+The default VM SKU is `Standard_NC4as_T4_v3`, set in both `variables.tf` and
+`terraform.tfvars.example`. Microsoft documents this SKU as one NVIDIA Tesla T4 with 16 GB of GPU
+memory, 4 vCPUs, and 28 GB of system memory, with Premium Storage and accelerated networking
+support.
+
 The configuration targets the Week-2 Phase-0 sweep. The default VM name is `dnd-week2-gpu`, and
 every managed resource carries a `phase` tag set from `experiment_phase`, which defaults to
 `week2-phase0`.
@@ -41,7 +46,7 @@ read-only provider checks show three resource providers are `NotRegistered`:
 | `Microsoft.DevTestLab` | The daily shutdown schedule. |
 
 The required `az vm list-usage` table returned no quota records, so the quota gate did not pass and
-`terraform plan` was not run.
+`terraform plan` was not run. Registration is still pending through the signed-in Azure portal.
 
 Terraform cannot register these providers for you. `main.tf` sets the AzureRM v5 provider option
 `resource_provider_registrations = "none"`, so Terraform cannot silently register
@@ -69,6 +74,7 @@ experiments. Shutdown notifications are disabled.
 
 | Variable | Type | Default | Notes |
 | --- | --- | --- | --- |
+| `vm_size` | `string` | `"Standard_NC4as_T4_v3"` | GPU VM SKU. Check its regional family quota before planning. |
 | `auto_shutdown_enabled` | `bool` | `true` | Whether Azure automatically stops the VM each day. |
 | `auto_shutdown_time` | `string` | `"2300"` | Daily shutdown time in Azure `HHmm` format. Validation rejects any value that is not a valid 24-hour `HHmm` value. |
 | `auto_shutdown_timezone` | `string` | `"Pacific Standard Time"` | Azure time-zone identifier used by the schedule. Cannot be empty. |
@@ -85,26 +91,26 @@ az account set --subscription <subscription-id>
 ./check_gpu_quota.sh \
   <subscription-id> \
   westus2 \
-  'NCads H100 v5' \
-  40
+  'NCasT4_v3' \
+  4
 ```
 
 The script first runs the required table-form `az vm list-usage` command, then selects the quota
-record and stops if the family limit is zero or fewer than 40 vCPUs remain. If Azure names the
-quota family differently in this subscription, rerun with the exact family fragment shown in the
-table. Quota sufficiency does not guarantee physical H100 capacity in a region or zone.
+record and stops if the family limit is zero or fewer than 4 vCPUs remain. Use the exact
+`NCasT4_v3` quota-family name shown in the table after provider registration; if Azure names the
+quota family differently in this subscription, rerun with the family fragment shown in the table.
+Quota sufficiency does not guarantee physical GPU capacity in a region or zone.
 
 Also confirm the SKU and image are offered in the target subscription/region:
 
 ```bash
-az vm list-skus --location westus2 --size Standard_NC40ads_H100_v5 --all --output table
+az vm list-skus --location westus2 --size Standard_NC4as_T4_v3 --all --output table
 az vm image show --location westus2 --urn microsoft-dsvm:ubuntu-hpc:2204:latest
 ```
 
-Azure's published Ubuntu-HPC support list does not currently name the NCads H100 v5 family, even
-though it documents the image and SKU separately. Treat the image check as a hard compatibility
-gate. If Azure rejects this pairing, choose an image explicitly offered for NCads H100 v5 or choose
-an Ubuntu-HPC-supported GPU SKU; do not work around the check in Terraform.
+Treat the image check as a hard compatibility gate. If Azure rejects this pairing, choose an image
+explicitly offered for the selected SKU or choose a SKU offered with the image; do not work around
+the check in Terraform.
 
 ## 3. Initialize, validate, and create a saved plan
 
