@@ -5,6 +5,7 @@ tenant_id       = "00000000-0000-0000-0000-000000000000"
 
 resource_group_name = "august-2026-1"
 region              = "westus2"
+# Quota family: Standard NCASv3_T4 Family vCPUs. Require at least 4.
 vm_size             = "Standard_NC4as_T4_v3"
 vm_name             = "dnd-week2-gpu"
 experiment_phase    = "week2-phase0"
