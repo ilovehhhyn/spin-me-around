@@ -19,7 +19,8 @@ source. The VM image is `microsoft-dsvm:ubuntu-hpc:2204:latest`; the OS disk is 
 The default VM SKU is `Standard_NC4as_T4_v3`, set in both `variables.tf` and
 `terraform.tfvars.example`. Microsoft documents this SKU as one NVIDIA Tesla T4 with 16 GB of GPU
 memory, 4 vCPUs, and 28 GB of system memory, with Premium Storage and accelerated networking
-support.
+support. `terraform.tfvars.example` records the SKU's quota family, Standard NCASv3_T4 Family
+vCPUs, and the requirement of at least 4 vCPUs in that family.
 
 The configuration targets the Week-2 Phase-0 sweep. The default VM name is `dnd-week2-gpu`, and
 every managed resource carries a `phase` tag set from `experiment_phase`, which defaults to
@@ -34,27 +35,26 @@ unreviewed plan, and never run `terraform destroy` without explicit confirmation
 
 `terraform init` with AzureRM 5.0.1, `terraform fmt -check`, and `terraform validate` pass.
 
-### Open blocker: three resource providers are NotRegistered
+### Open blocker: the T4 quota family limit is zero
 
-The authenticated subscription and the existing `westus2` resource group are reachable, but
-read-only provider checks show three resource providers are `NotRegistered`:
+Resource provider registration is complete for `Microsoft.Compute`, `Microsoft.Network`, and
+`Microsoft.DevTestLab`, so the read-only quota check now returns a record for the configured SKU.
+The `westus2` quota row for `Standard_NC4as_T4_v3` is:
 
-| Resource provider | Needed for |
-| --- | --- |
-| `Microsoft.Compute` | The VM and the quota check. |
-| `Microsoft.Network` | The dedicated training network. |
-| `Microsoft.DevTestLab` | The daily shutdown schedule. |
+| Quota family | Current | Limit |
+| --- | --- | --- |
+| Standard NCASv3_T4 Family vCPUs | 0 | 0 |
 
-The required `az vm list-usage` table returned no quota records, so the quota gate did not pass and
-`terraform plan` was not run. Registration is still pending through the signed-in Azure portal.
+The SKU needs at least 4 vCPUs in that family, so the quota gate does not pass. Because the limit
+is zero, no SKU or image check was run and `terraform plan` was not run. A quota increase for
+Standard NCASv3_T4 Family vCPUs in `westus2` is required before planning.
 
-Terraform cannot register these providers for you. `main.tf` sets the AzureRM v5 provider option
-`resource_provider_registrations = "none"`, so Terraform cannot silently register
-subscription-scoped providers. Registration is subscription-scoped and falls outside the authorized
-resource-group-only mutation boundary that this setting preserves.
+`main.tf` sets the AzureRM v5 provider option `resource_provider_registrations = "none"`, so
+Terraform never registers subscription-scoped providers. That setting preserves the authorized
+resource-group-only mutation boundary.
 
-A subscription administrator must register all three providers. After registration, rerun the quota
-gate and the SKU and image gates below before planning.
+After the quota increase, rerun the quota gate and then the SKU and image gates below before
+planning.
 
 ## 1. Supply local values
 
@@ -74,7 +74,7 @@ experiments. Shutdown notifications are disabled.
 
 | Variable | Type | Default | Notes |
 | --- | --- | --- | --- |
-| `vm_size` | `string` | `"Standard_NC4as_T4_v3"` | GPU VM SKU. Check its regional family quota before planning. |
+| `vm_size` | `string` | `"Standard_NC4as_T4_v3"` | GPU VM SKU. Check its regional family quota, Standard NCASv3_T4 Family vCPUs, before planning. |
 | `auto_shutdown_enabled` | `bool` | `true` | Whether Azure automatically stops the VM each day. |
 | `auto_shutdown_time` | `string` | `"2300"` | Daily shutdown time in Azure `HHmm` format. Validation rejects any value that is not a valid 24-hour `HHmm` value. |
 | `auto_shutdown_timezone` | `string` | `"Pacific Standard Time"` | Azure time-zone identifier used by the schedule. Cannot be empty. |
@@ -91,15 +91,15 @@ az account set --subscription <subscription-id>
 ./check_gpu_quota.sh \
   <subscription-id> \
   westus2 \
-  'NCasT4_v3' \
+  'NCASv3_T4' \
   4
 ```
 
 The script first runs the required table-form `az vm list-usage` command, then selects the quota
-record and stops if the family limit is zero or fewer than 4 vCPUs remain. Use the exact
-`NCasT4_v3` quota-family name shown in the table after provider registration; if Azure names the
-quota family differently in this subscription, rerun with the family fragment shown in the table.
-Quota sufficiency does not guarantee physical GPU capacity in a region or zone.
+record and stops if the family limit is zero or fewer than 4 vCPUs remain. The matching row in this
+subscription is `Standard NCASv3_T4 Family vCPUs`; if Azure names the quota family differently,
+rerun with the family fragment shown in the table. Quota sufficiency does not guarantee physical
+GPU capacity in a region or zone.
 
 Also confirm the SKU and image are offered in the target subscription/region:
 
