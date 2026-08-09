@@ -5,7 +5,7 @@ tenant_id       = "00000000-0000-0000-0000-000000000000"
 
 resource_group_name = "august-2026-1"
 region              = "westus2"
-vm_size             = "Standard_NC40ads_H100_v5"
+vm_size             = "Standard_NC4as_T4_v3"
 vm_name             = "dnd-week2-gpu"
 experiment_phase    = "week2-phase0"
 admin_username       = "azureuser"

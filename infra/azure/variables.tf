@@ -37,7 +37,7 @@ variable "region" {
 variable "vm_size" {
   description = "GPU VM SKU. Check its regional family quota before planning."
   type        = string
-  default     = "Standard_NC40ads_H100_v5"
+  default     = "Standard_NC4as_T4_v3"
 }
 
 variable "vm_name" {
