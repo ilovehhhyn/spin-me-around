@@ -29,15 +29,27 @@ unreviewed plan, and never run `terraform destroy` without explicit confirmation
 
 `terraform init` with AzureRM 5.0.1, `terraform fmt -check`, and `terraform validate` pass.
 
-### Open blocker: Microsoft.Compute is NotRegistered
+### Open blocker: three resource providers are NotRegistered
 
-The authenticated subscription and the existing `westus2` resource group are reachable, but the
-`Microsoft.Compute` resource provider is `NotRegistered`. The required `az vm list-usage` table
-returned no quota records, so the quota gate did not pass and no plan was run.
+The authenticated subscription and the existing `westus2` resource group are reachable, but
+read-only provider checks show three resource providers are `NotRegistered`:
 
-Provider registration is subscription-scoped and falls outside the authorized
-resource-group-only mutation boundary. You or a subscription administrator must register
-`Microsoft.Compute`, then rerun the quota gate and the SKU and image gates below before planning.
+| Resource provider | Needed for |
+| --- | --- |
+| `Microsoft.Compute` | The VM and the quota check. |
+| `Microsoft.Network` | The dedicated training network. |
+| `Microsoft.DevTestLab` | The daily shutdown schedule. |
+
+The required `az vm list-usage` table returned no quota records, so the quota gate did not pass and
+`terraform plan` was not run.
+
+Terraform cannot register these providers for you. `main.tf` sets the AzureRM v5 provider option
+`resource_provider_registrations = "none"`, so Terraform cannot silently register
+subscription-scoped providers. Registration is subscription-scoped and falls outside the authorized
+resource-group-only mutation boundary that this setting preserves.
+
+A subscription administrator must register all three providers. After registration, rerun the quota
+gate and the SKU and image gates below before planning.
 
 ## 1. Supply local values
 
