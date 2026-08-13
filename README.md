@@ -1,6 +1,5 @@
 # Distance Is Not Damage
 
-The revised proposal is in
 [`docs/research/proposal.md`](docs/research/proposal.md).
 
 
