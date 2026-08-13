@@ -5,9 +5,15 @@ tenant_id       = "00000000-0000-0000-0000-000000000000"
 
 resource_group_name = "august-2026-1"
 region              = "westus2"
-vm_size             = "Standard_NC40ads_H100_v5"
-vm_name             = "dnd-week1-gpu"
+# Quota family: Standard NCASv3_T4 Family vCPUs. Require at least 4.
+vm_size             = "Standard_NC4as_T4_v3"
+vm_name             = "dnd-week2-gpu"
+experiment_phase    = "week2-phase0"
 admin_username       = "azureuser"
 
 ssh_public_key_path = "~/.ssh/id_ed25519_spark.pub"
 ssh_source_cidr     = "203.0.113.10/32"
+
+auto_shutdown_enabled  = true
+auto_shutdown_time     = "2300"
+auto_shutdown_timezone = "Pacific Standard Time"

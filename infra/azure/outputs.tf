@@ -12,3 +12,12 @@ output "ssh_command" {
     azurerm_public_ip.training.ip_address,
   )
 }
+
+output "automatic_shutdown" {
+  description = "Configured daily VM shutdown guard."
+  value = {
+    enabled  = var.auto_shutdown_enabled
+    time     = var.auto_shutdown_time
+    timezone = var.auto_shutdown_timezone
+  }
+}

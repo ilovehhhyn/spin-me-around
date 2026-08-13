@@ -12,8 +12,9 @@ terraform {
 provider "azurerm" {
   features {}
 
-  subscription_id = var.subscription_id
-  tenant_id       = var.tenant_id
+  subscription_id                 = var.subscription_id
+  tenant_id                       = var.tenant_id
+  resource_provider_registrations = "none"
 }
 
 # The resource group is intentionally read, not created. Every managed resource
@@ -28,6 +29,7 @@ locals {
     managed-by = "terraform"
     project    = "distance-is-not-damage"
     purpose    = "ml-training"
+    phase      = var.experiment_phase
   }
 }
 
@@ -137,4 +139,20 @@ resource "azurerm_linux_virtual_machine" "training" {
   tags = local.common_tags
 
   depends_on = [azurerm_subnet_network_security_group_association.training]
+}
+
+# GPU instances are expensive and easy to leave idle. This schedule is enabled
+# by default but remains configurable for deliberately overnight experiments.
+resource "azurerm_dev_test_global_vm_shutdown_schedule" "training" {
+  virtual_machine_id    = azurerm_linux_virtual_machine.training.id
+  location              = var.region
+  enabled               = var.auto_shutdown_enabled
+  daily_recurrence_time = var.auto_shutdown_time
+  timezone              = var.auto_shutdown_timezone
+
+  notification_settings {
+    enabled = false
+  }
+
+  tags = local.common_tags
 }
