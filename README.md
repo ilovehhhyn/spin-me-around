@@ -16,8 +16,3 @@
 
 ## we are currently at: week 2.5
 
-## Azure
-
-Terraform for one Azure GPU VM lives in [`infra/azure`](infra/azure). It references an existing
-resource group and cannot create resources outside that group. Follow the quota gate in its README;
-never run `apply` until the saved plan has been reviewed.
