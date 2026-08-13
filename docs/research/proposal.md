@@ -4,7 +4,7 @@
 
 **Research proposal — revised August 2026**
 
-> **Contribution in one sentence.** Prior work shows that new-task KL predicts the *immediate magnitude* of forgetting; this project tests whether it also predicts *recovery*, and whether recovery requires a second axis determined by externally supplied information and the geometry of the update, beginning with a preregistered full-fine-tuning versus rank-8 LoRA contrast.
+> Prior work shows that new-task KL predicts the *immediate magnitude* of forgetting; this project tests whether it also predicts *recovery*, and whether recovery requires a second axis determined by externally supplied information and the geometry of the update, beginning with a preregistered full-fine-tuning versus rank-8 LoRA contrast.
 
 ## Abstract
 
